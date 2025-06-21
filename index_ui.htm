@@ -1,348 +1,171 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beam Position Monitoring | RedPitaya</title>
+    <title>RedPitaya Beam Monitoring</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --bg-color: #f8f9fa;
-            --text-color: #212529;
-            --primary: #0d6efd;
-            --error: #dc3545;
-            --grid-color: rgba(0, 0, 0, 0.05);
-        }
-
         body {
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            line-height: 1.6;
+            background: #f5f5f5;
         }
-
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
         }
-
-        header {
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--grid-color);
-        }
-
-        h1 {
-            font-weight: 500;
-            font-size: 1.8rem;
-            margin: 0;
-        }
-
-        .status {
-            display: flex;
-            align-items: center;
-            margin-top: 1rem;
-            font-family: monospace;
-        }
-
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-            background: #6c757d;
-        }
-
-        .status-indicator.connected {
-            background: var(--primary);
-        }
-
-        .dashboard {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-        }
-
         .panel {
             background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
-        .panel-header {
-            margin-bottom: 1.5rem;
+        canvas {
+            width: 100%;
+            height: 300px;
         }
-
-        .panel-title {
-            font-weight: 500;
-            font-size: 1.2rem;
-            margin: 0 0 0.5rem 0;
+        .status {
+            padding: 10px;
+            background: #eee;
+            border-radius: 5px;
+            margin-bottom: 15px;
         }
-
-        .data-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: 1.5rem;
-        }
-
-        .data-value {
-            font-size: 1.8rem;
-            font-weight: 500;
-            margin: 0.5rem 0;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .error-panel {
-            background-color: #fff8f8;
-            border-left: 4px solid var(--error);
-            padding: 1rem;
-            margin: 2rem 0;
-            font-family: monospace;
-        }
-
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 0.6rem 1rem;
-            font-size: 0.9rem;
-            cursor: pointer;
-            margin-top: 1rem;
+        .error {
+            color: red;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Beam Position Monitoring</h1>
-            <div class="status">
-                <div class="status-indicator" id="statusIndicator"></div>
-                <span id="statusText">Connecting to RedPitaya...</span>
-            </div>
-        </header>
+        <h1>RedPitaya Beam Monitoring</h1>
+        
+        <div class="status">
+            Status: <span id="connectionStatus">Verbindung wird hergestellt...</span>
+        </div>
 
-        <div class="dashboard">
-            <div class="panel">
-                <div class="panel-header">
-                    <h2 class="panel-title">Beam Position</h2>
-                    <p>Real-time XY coordinates</p>
-                </div>
-                <div style="height: 300px;">
-                    <canvas id="positionChart"></canvas>
-                </div>
-                <div class="data-grid">
-                    <div>
-                        <p>X Position</p>
-                        <div class="data-value" id="xPosValue">-</div>
-                    </div>
-                    <div>
-                        <p>Y Position</p>
-                        <div class="data-value" id="yPosValue">-</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-header">
-                    <h2 class="panel-title">Position History</h2>
-                    <p>X-axis movement over time</p>
-                </div>
-                <div style="height: 300px;">
-                    <canvas id="historyChart"></canvas>
-                </div>
-                <div class="data-grid">
-                    <div>
-                        <p>Max Deviation</p>
-                        <div class="data-value" id="deviationValue">-</div>
-                    </div>
-                    <div>
-                        <p>Stability</p>
-                        <div class="data-value" id="stabilityValue">-</div>
-                    </div>
-                </div>
+        <div class="panel">
+            <h2>Beam Position</h2>
+            <canvas id="positionChart"></canvas>
+            <div>
+                X: <span id="xPos">0.000</span> | 
+                Y: <span id="yPos">0.000</span> | 
+                Stability: <span id="stability">100.0</span>%
             </div>
         </div>
 
-        <div class="error-panel" id="errorPanel" style="display: none;">
-            <h3>Connection Error</h3>
-            <p id="errorDetails"></p>
-            <button id="retryBtn">Retry Connection</button>
+        <div class="panel">
+            <h2>Position History</h2>
+            <canvas id="historyChart"></canvas>
         </div>
+
+        <div id="errorPanel" class="error" style="display: none;"></div>
     </div>
 
     <script>
-        // Chart instances
-        let positionChart, historyChart;
+        // Charts initialisieren
+        const posCtx = document.getElementById('positionChart').getContext('2d');
+        const histCtx = document.getElementById('historyChart').getContext('2d');
+        
+        const positionChart = new Chart(posCtx, {
+            type: 'scatter',
+            data: { datasets: [{
+                label: 'Beam Position',
+                data: [{x: 0, y: 0}],
+                backgroundColor: 'rgba(75, 192, 192, 1)'
+            }]},
+            options: {
+                scales: {
+                    x: { type: 'linear', min: -1, max: 1 },
+                    y: { type: 'linear', min: -1, max: 1 }
+                }
+            }
+        });
+
+        const historyChart = new Chart(histCtx, {
+            type: 'line',
+            data: { datasets: [{
+                label: 'X Position',
+                data: [],
+                borderColor: 'rgba(54, 162, 235, 1)'
+            }]}
+        });
+
+        // WebSocket-Verbindung
         let socket;
-        let positionHistory = [];
-        const maxHistoryLength = 100;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
 
-        function initCharts() {
-            // Position Chart (XY Scatter)
-            positionChart = new Chart(
-                document.getElementById('positionChart').getContext('2d'),
-                {
-                    type: 'scatter',
-                    data: {
-                        datasets: [{
-                            label: 'Beam Position',
-                            data: [],
-                            backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            borderWidth: 1,
-                            pointRadius: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: {
-                                type: 'linear',
-                                position: 'center',
-                                min: -1,
-                                max: 1,
-                                grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                                ticks: {
-                                    callback: value => value.toFixed(1)
-                                }
-                            },
-                            y: {
-                                type: 'linear',
-                                position: 'center',
-                                min: -1,
-                                max: 1,
-                                grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                                ticks: {
-                                    callback: value => value.toFixed(1)
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => `X: ${ctx.parsed.x.toFixed(3)}, Y: ${ctx.parsed.y.toFixed(3)}`
-                                }
-                            }
-                        }
-                    }
-                }
-            );
-
-            // History Chart (Line)
-            historyChart = new Chart(
-                document.getElementById('historyChart').getContext('2d'),
-                {
-                    type: 'line',
-                    data: {
-                        labels: Array(maxHistoryLength).fill(''),
-                        datasets: [{
-                            data: [],
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            borderWidth: 2,
-                            tension: 0.1,
-                            fill: false,
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { display: false },
-                            y: {
-                                min: -1,
-                                max: 1,
-                                grid: { color: 'rgba(0, 0, 0, 0.05)' }
-                            }
-                        },
-                        plugins: { legend: { display: false } }
-                    }
-                }
-            );
-        }
-
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host;
-            socket = new WebSocket(`${protocol}//${host}/ws`);
-
+        function connect() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+            
             socket.onopen = () => {
-                document.getElementById('statusIndicator').classList.add('connected');
-                document.getElementById('statusText').textContent = 'Connected to RedPitaya';
-                document.getElementById('errorPanel').style.display = 'none';
+                reconnectAttempts = 0;
+                updateStatus('Verbunden mit RedPitaya', 'green');
             };
-
+            
             socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    updateUI(data);
-                } catch (e) {
-                    console.error('Error parsing WebSocket message:', e);
+                const parts = event.data.split(',');
+                if(parts.length === 3) {
+                    const x = parseFloat(parts[0]);
+                    const y = parseFloat(parts[1]);
+                    const stability = parseFloat(parts[2]);
+                    
+                    updateCharts(x, y, stability);
                 }
             };
-
+            
             socket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                showError('WebSocket connection error');
+                showError(`Verbindungsfehler: ${error.message}`);
             };
-
+            
             socket.onclose = () => {
-                document.getElementById('statusIndicator').classList.remove('connected');
-                document.getElementById('statusText').textContent = 'Disconnected';
-                showError('Connection to RedPitaya lost');
+                if(reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    setTimeout(connect, 2000);
+                    updateStatus(`Neuverbindung versucht (${reconnectAttempts}/${maxReconnectAttempts})`, 'orange');
+                } else {
+                    updateStatus('Verbindung verloren', 'red');
+                }
             };
         }
 
-        function updateUI(data) {
-            // Update position chart
-            positionChart.data.datasets[0].data = [{x: data.x, y: data.y}];
+        function updateCharts(x, y, stability) {
+            // Position Chart
+            positionChart.data.datasets[0].data = [{x, y}];
             positionChart.update();
             
-            // Update history chart
-            positionHistory.push(data.x);
-            if (positionHistory.length > maxHistoryLength) {
-                positionHistory.shift();
+            // History Chart
+            historyChart.data.datasets[0].data.push({x: Date.now(), y: x});
+            if(historyChart.data.datasets[0].data.length > 50) {
+                historyChart.data.datasets[0].data.shift();
             }
-            historyChart.data.datasets[0].data = [...positionHistory];
             historyChart.update();
             
-            // Update displayed values
-            document.getElementById('xPosValue').textContent = data.x.toFixed(3);
-            document.getElementById('yPosValue').textContent = data.y.toFixed(3);
-            document.getElementById('stabilityValue').textContent = data.stability.toFixed(1);
-            
-            // Calculate max deviation
-            const deviation = Math.max(...positionHistory.map(Math.abs));
-            document.getElementById('deviationValue').textContent = deviation.toFixed(3);
+            // Werte anzeigen
+            document.getElementById('xPos').textContent = x.toFixed(3);
+            document.getElementById('yPos').textContent = y.toFixed(3);
+            document.getElementById('stability').textContent = stability.toFixed(1);
+        }
+
+        function updateStatus(message, color) {
+            const status = document.getElementById('connectionStatus');
+            status.textContent = message;
+            status.style.color = color;
         }
 
         function showError(message) {
-            document.getElementById('errorDetails').textContent = message;
-            document.getElementById('errorPanel').style.display = 'block';
+            const errorPanel = document.getElementById('errorPanel');
+            errorPanel.textContent = message;
+            errorPanel.style.display = 'block';
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            initCharts();
-            connectWebSocket();
-            
-            document.getElementById('retryBtn').addEventListener('click', () => {
-                connectWebSocket();
-            });
-        });
+        // Verbindung starten
+        connect();
     </script>
 </body>
 </html>
