@@ -94,7 +94,7 @@ void handle_client(int client_socket) {
             std::lock_guard<std::mutex> lock(data_mutex);
             current_x = x;
             current_y = y;
-            beam_stability = 100.0f - (sqrt(x*x + y*y) * 20.0f;
+            beam_stability = 100.0f - (sqrt(x*x + y*y) * 20.0f);
         }
 
         // Daten senden
